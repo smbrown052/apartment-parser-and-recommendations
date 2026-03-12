@@ -1,7 +1,6 @@
 import json
+import streamlit as st
 from openai import OpenAI
-
-client = OpenAI()
 
 
 PREFERENCE_SCHEMA = {
@@ -38,12 +37,22 @@ PREFERENCE_SCHEMA = {
         },
         "required": ["must_haves", "nice_to_haves", "user_summary"],
         "additionalProperties": False
-    },
-    "strict": True
+    }
 }
 
 
+def get_openai_client() -> OpenAI:
+    api_key = st.secrets.get("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "Missing OPENAI_API_KEY. Add it in Streamlit Secrets."
+        )
+    return OpenAI(api_key=api_key)
+
+
 def parse_preferences_with_llm(user_query: str) -> dict:
+    client = get_openai_client()
+
     response = client.responses.create(
         model="gpt-5-mini",
         input=[
@@ -75,6 +84,8 @@ def parse_preferences_with_llm(user_query: str) -> dict:
 
 
 def generate_rationale_with_llm(user_query: str, prefs: dict, top_results: list[dict]) -> str:
+    client = get_openai_client()
+
     response = client.responses.create(
         model="gpt-5-mini",
         input=[
