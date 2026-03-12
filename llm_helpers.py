@@ -41,12 +41,10 @@ PREFERENCE_SCHEMA = {
 }
 
 
-def get_openai_client() -> OpenAI:
+def get_openai_client():
     api_key = st.secrets.get("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError(
-            "Missing OPENAI_API_KEY. Add it in Streamlit Secrets."
-        )
+        raise ValueError("Missing OPENAI_API_KEY in Streamlit secrets.")
     return OpenAI(api_key=api_key)
 
 
@@ -62,7 +60,7 @@ def parse_preferences_with_llm(user_query: str) -> dict:
                     "Extract apartment preferences from the user's request. "
                     "Only use fields in the schema. "
                     "If the user does not specify something, return null for must_haves "
-                    "and a reasonable default weight from 0.0 to 1.0 for nice_to_haves."
+                    "and reasonable weights from 0.0 to 1.0 for nice_to_haves."
                 )
             },
             {
@@ -103,8 +101,7 @@ def generate_rationale_with_llm(user_query: str, prefs: dict, top_results: list[
                     f"User request:\n{user_query}\n\n"
                     f"Parsed preferences:\n{json.dumps(prefs, indent=2)}\n\n"
                     f"Top ranked options:\n{json.dumps(top_results, indent=2)}\n\n"
-                    "Write 3 short bullets, one per option, explaining why each ranked well "
-                    "and mention any tradeoff."
+                    "Write 3 short bullets, one per option, explaining why each ranked well and mention any tradeoff."
                 )
             }
         ]
