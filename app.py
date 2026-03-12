@@ -5,6 +5,9 @@ from datetime import datetime, timedelta
 from llm_helpers import parse_preferences_with_llm, generate_rationale_with_llm
 from ranking import rank_listings_with_ai
 
+from openai import OpenAI
+client = OpenAI()
+
 
 st.set_page_config(page_title="Apartment Compare AI", layout="wide")
 
