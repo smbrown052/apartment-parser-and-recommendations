@@ -5,10 +5,6 @@ from datetime import datetime, timedelta
 from llm_helpers import parse_preferences_with_llm, generate_rationale_with_llm
 from ranking import rank_listings_with_ai
 
-from openai import OpenAI
-client = OpenAI()
-
-
 st.set_page_config(page_title="Apartment Compare AI", layout="wide")
 
 
@@ -89,6 +85,7 @@ def parse_availability_date(value):
     except ValueError:
         return None
 
+
 def compute_best_deal_score(row):
     """
     Higher score = better deal.
@@ -121,6 +118,10 @@ def compute_best_deal_score(row):
 
     return round(score, 2)
 
+
+# -----------------------
+# Session state
+# -----------------------
 if "raw_text" not in st.session_state:
     st.session_state.raw_text = ""
 
@@ -137,11 +138,17 @@ if "ai_rationale" not in st.session_state:
     st.session_state.ai_rationale = ""
 
 
+# -----------------------
+# Header
+# -----------------------
 st.title("Apartment Compare AI")
 st.write("Turn copied apartment listing text into structured comparison data.")
 st.caption("Built for comparing apartment listings copied from restricted websites.")
 
 
+# -----------------------
+# Input / Parsed output
+# -----------------------
 left_col, right_col = st.columns([1, 1])
 
 with left_col:
@@ -179,7 +186,6 @@ with left_col:
         else:
             st.warning("Please paste text or load a sample listing first.")
 
-
 with right_col:
     st.subheader("Extracted Listing Details")
 
@@ -190,15 +196,9 @@ with right_col:
         st.write(f"**Floorplan Name:** {parsed_listing.get('floorplan_name') or 'N/A'}")
         st.write(f"**Beds:** {parsed_listing.get('beds') or 'N/A'}")
         st.write(f"**Baths:** {parsed_listing.get('baths') or 'N/A'}")
-        st.write(
-            f"**Floorplan Price Range:** {parsed_listing.get('floorplan_price_range') or 'N/A'}"
-        )
-        st.write(
-            f"**Floorplan Sq Ft Range:** {parsed_listing.get('floorplan_sqft_range') or 'N/A'}"
-        )
-        st.write(
-            f"**Has Den:** {'Yes' if parsed_listing.get('floorplan_has_den') else 'No'}"
-        )
+        st.write(f"**Floorplan Price Range:** {parsed_listing.get('floorplan_price_range') or 'N/A'}")
+        st.write(f"**Floorplan Sq Ft Range:** {parsed_listing.get('floorplan_sqft_range') or 'N/A'}")
+        st.write(f"**Has Den:** {'Yes' if parsed_listing.get('floorplan_has_den') else 'No'}")
 
         units = parsed_listing.get("units", [])
         st.write(f"**Units Parsed:** {len(units)}")
@@ -220,15 +220,20 @@ with right_col:
         st.info("No listing parsed yet.")
 
 
+# -----------------------
+# Comparison table
+# -----------------------
 st.subheader("Comparison Table")
 
 if st.session_state.comparison_rows:
     comparison_df = pd.DataFrame(st.session_state.comparison_rows)
 
-    # Convert availability text into a sortable date
     comparison_df["availability_dt"] = comparison_df["available_date"].apply(parse_availability_date)
     comparison_df["best_deal_score"] = comparison_df.apply(compute_best_deal_score, axis=1)
 
+    # -----------------------
+    # AI Best Match
+    # -----------------------
     st.markdown("---")
     st.subheader("AI Best Match")
 
@@ -316,52 +321,55 @@ if st.session_state.comparison_rows:
             if st.session_state.ai_rationale:
                 st.markdown("### Why these ranked highly")
                 st.write(st.session_state.ai_rationale)
-    
+
+    # -----------------------
+    # Manual filters
+    # -----------------------
     st.markdown("### Filter Listings")
 
     f1, f2, f3, f4 = st.columns(4)
 
     with f1:
-            availability_filter = st.selectbox(
-                "Availability",
-                [
-                    "All",
-                    "Now / Immediately",
-                    "Within 7 Days",
-                    "Within 30 Days",
-                ],
-            )
+        availability_filter = st.selectbox(
+            "Availability",
+            [
+                "All",
+                "Now / Immediately",
+                "Within 7 Days",
+                "Within 30 Days",
+            ],
+        )
 
     with f2:
-            max_budget = st.slider(
-                "Max Budget ($)",
-                min_value=1000,
-                max_value=6000,
-                value=4000,
-                step=50,
-            )
+        max_budget = st.slider(
+            "Max Budget ($)",
+            min_value=1000,
+            max_value=6000,
+            value=4000,
+            step=50,
+        )
 
     with f3:
-            min_sqft = st.slider(
-                "Minimum Sq Ft",
-                min_value=300,
-                max_value=1500,
-                value=500,
-                step=25,
-            )
+        min_sqft = st.slider(
+            "Minimum Sq Ft",
+            min_value=300,
+            max_value=1500,
+            value=500,
+            step=25,
+        )
 
     with f4:
-            sort_option = st.selectbox(
-                "Sort By",
-                [
-                    "Best Deal Score",
-                    "Price per Sq Ft",
-                    "Lowest Price",
-                    "Largest Unit",
-                    "Soonest Available",
-                ],
-            )
-    
+        sort_option = st.selectbox(
+            "Sort By",
+            [
+                "Best Deal Score",
+                "Price per Sq Ft",
+                "Lowest Price",
+                "Largest Unit",
+                "Soonest Available",
+            ],
+        )
+
     filtered_df = comparison_df.copy()
 
     today = datetime.today()
@@ -370,57 +378,41 @@ if st.session_state.comparison_rows:
 
     # Budget filter
     filtered_df = filtered_df[
-            filtered_df["unit_price"].isna() | (filtered_df["unit_price"] <= max_budget)
-        ]
+        filtered_df["unit_price"].isna() | (filtered_df["unit_price"] <= max_budget)
+    ]
 
     # Square footage filter
     filtered_df = filtered_df[
-            filtered_df["unit_sqft"].isna() | (filtered_df["unit_sqft"] >= min_sqft)
+        filtered_df["unit_sqft"].isna() | (filtered_df["unit_sqft"] >= min_sqft)
+    ]
+
+    # Availability filter
+    if availability_filter == "Now / Immediately":
+        filtered_df = filtered_df[
+            filtered_df["available_date"].astype(str).str.lower().isin(["now", "immediately"])
+        ]
+    elif availability_filter == "Within 7 Days":
+        filtered_df = filtered_df[
+            filtered_df["availability_dt"].notna()
+            & (filtered_df["availability_dt"] <= seven_days)
+        ]
+    elif availability_filter == "Within 30 Days":
+        filtered_df = filtered_df[
+            filtered_df["availability_dt"].notna()
+            & (filtered_df["availability_dt"] <= thirty_days)
         ]
 
-     # -----------------------
-        # Availability filters
-        # -----------------------
-    if availability_filter == "Now / Immediately":
-            filtered_df = filtered_df[
-                filtered_df["available_date"].astype(str).str.lower().isin(["now", "immediately"])
-            ]
-
-    elif availability_filter == "Within 7 Days":
-            filtered_df = filtered_df[
-                filtered_df["availability_dt"].notna()
-                & (filtered_df["availability_dt"] <= seven_days)
-            ]
-
-    elif availability_filter == "Within 30 Days":
-            filtered_df = filtered_df[
-                filtered_df["availability_dt"].notna()
-                & (filtered_df["availability_dt"] <= thirty_days)
-            ]
-
-
-
-
-
-       
-        # -----------------------
-        # Sorting
-        # -----------------------
+    # Sorting
     if sort_option == "Best Deal Score":
-            filtered_df = filtered_df.sort_values("best_deal_score", ascending=False)
-
+        filtered_df = filtered_df.sort_values("best_deal_score", ascending=False)
     elif sort_option == "Price per Sq Ft":
-            filtered_df = filtered_df.sort_values("rent_per_sqft", ascending=True)
-
+        filtered_df = filtered_df.sort_values("rent_per_sqft", ascending=True)
     elif sort_option == "Lowest Price":
-            filtered_df = filtered_df.sort_values("unit_price", ascending=True)
-
+        filtered_df = filtered_df.sort_values("unit_price", ascending=True)
     elif sort_option == "Largest Unit":
-            filtered_df = filtered_df.sort_values("unit_sqft", ascending=False)
-
+        filtered_df = filtered_df.sort_values("unit_sqft", ascending=False)
     elif sort_option == "Soonest Available":
-            filtered_df = filtered_df.sort_values("availability_dt", ascending=True)
-        
+        filtered_df = filtered_df.sort_values("availability_dt", ascending=True)
 
     display_cols = [
         "property_title",
@@ -431,34 +423,25 @@ if st.session_state.comparison_rows:
         "available_date",
         "rent_per_sqft",
         "best_deal_score",
-        ]
+    ]
 
     display_df = filtered_df[display_cols].copy()
 
-    if "unit_price" in display_df.columns:
-            display_df["unit_price"] = display_df["unit_price"].apply(
-                lambda x: f"${int(x):,}" if pd.notnull(x) else ""
-            )
-
-    if "rent_per_sqft" in display_df.columns:
-            display_df["rent_per_sqft"] = display_df["rent_per_sqft"].apply(
-                lambda x: f"${x:.2f}" if pd.notnull(x) else ""
-            )
-
-    if "best_deal_score" in display_df.columns:
-            display_df["best_deal_score"] = display_df["best_deal_score"].apply(
-                lambda x: f"{x:.1f}" if pd.notnull(x) else ""
-            )
+    display_df["unit_price"] = display_df["unit_price"].apply(
+        lambda x: f"${int(x):,}" if pd.notnull(x) else ""
+    )
+    display_df["rent_per_sqft"] = display_df["rent_per_sqft"].apply(
+        lambda x: f"${x:.2f}" if pd.notnull(x) else ""
+    )
+    display_df["best_deal_score"] = display_df["best_deal_score"].apply(
+        lambda x: f"{x:.1f}" if pd.notnull(x) else ""
+    )
 
     st.dataframe(display_df, use_container_width=True)
 
-        # -----------------------
-        # Insights
-        # -----------------------
-
-
-
-
+    # -----------------------
+    # Insights
+    # -----------------------
     c1, c2, c3 = st.columns(3)
 
     valid_rent = filtered_df.dropna(subset=["unit_price"])
@@ -489,7 +472,7 @@ if st.session_state.comparison_rows:
     clear1, clear2 = st.columns(2)
 
     with clear1:
-        if st.button("Remove Last Added Row"):
+        if st.button("Remove Last Unit Row"):
             if st.session_state.comparison_rows:
                 st.session_state.comparison_rows.pop()
                 st.rerun()
@@ -497,7 +480,9 @@ if st.session_state.comparison_rows:
     with clear2:
         if st.button("Clear Comparison Table"):
             st.session_state.comparison_rows = []
+            st.session_state.ai_prefs = None
+            st.session_state.ai_rationale = ""
             st.rerun()
 
 else:
-        st.info("No saved comparison rows yet.")
+    st.info("No saved comparison rows yet.")
