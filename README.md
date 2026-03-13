@@ -1,6 +1,7 @@
-# Apartment Compare AI
+# NestAI
 
 **Live App:** (https://apartment-comparison-and-recommendation.streamlit.app/)
+Find *your* nest.
 
 User Instructions:
 - You may paste text copied from apartments.com (web scraping is not acceptable per apartment.com terms so it must be pasted manually into the app)
