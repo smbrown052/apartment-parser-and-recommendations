@@ -27,8 +27,8 @@ def normalize_text(text):
 def extract_available_units_section(lines):
     start_idx = 0
     for i, line in enumerate(lines):
-        if re.search(r"available units", line, re.IGNORECASE):
-            start_idx = i + 1
+        if re.search(r"\bpricing\s*&\s*floor\s*plans\b", line, re.IGNORECASE):
+            start_idx = i
             break
     return lines[start_idx:]
 
@@ -281,22 +281,58 @@ def extract_walkability(text):
         "bike_label": bike_label,
     }
 
+unit_lines = [
+    line
+    for line in unit_lines
+    if line.lower()
+    not in {
+        "unit",
+        "total price",
+        "sq ft",
+        "availability",
+        "unit details",
+        "tour floor plan",
+        "floor plan details",
+    }
+    and not re.search(r"show more units?", line, re.IGNORECASE)
+]
+
 
 def parse_unit_records(unit_text):
+    """
+    Parse repeated unit blocks like:
+
+    Unit
+    1631
+    price
+    $2,656
+    square feet
+    724
+    availibilityNow
+
+    or similar formatting variations.
+    """
     pattern = re.compile(
-        r"Unit\s*(?P<unit>[A-Za-z]?\d{2,4}[A-Za-z]?)"
-        r".{0,60}?price\s*(?P<price>\$[\d,]+(?:\.\d{2})?)"
-        r".{0,60}?square feet\s*(?P<sqft>\d{3,4})"
-        r".{0,60}?availability\s*(?P<availability>Now|Immediately|[A-Z][a-z]{2,8}\s+\d{1,2})",
+        r"Unit\s*(?P<unit>[A-Za-z]?\d{3,4}[A-Za-z]?)\s*"
+        r"(?:.*?\bprice\b\s*(?P<price>\$[\d,]+(?:\.\d{2})?))\s*"
+        r"(?:.*?\bsquare feet\b\s*(?P<sqft>[\d,]{3,5}))\s*"
+        r"(?:.*?\bavail(?:ability|ibility)\b\s*(?P<availability>Now|Immediately|[A-Z][a-z]{2,8}\s+\d{1,2}))",
         re.IGNORECASE | re.DOTALL,
     )
 
     matches = []
+    seen = set()
+
     for match in pattern.finditer(unit_text):
         unit_label = match.group("unit")
         unit_price = match.group("price")
         unit_sqft = match.group("sqft")
         available_date = match.group("availability")
+
+        key = (unit_label, unit_price, unit_sqft, available_date)
+        if key in seen:
+            continue
+        seen.add(key)
 
         row_text = (
             f"Unit {unit_label} | "
@@ -316,7 +352,6 @@ def parse_unit_records(unit_text):
         )
 
     return matches
-
 
 def parse_apartment_listing(raw_text: str) -> dict:
     """
