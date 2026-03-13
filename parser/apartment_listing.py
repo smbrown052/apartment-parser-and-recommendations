@@ -92,8 +92,12 @@ def extract_section_items(text, section_names, stop_names=None):
         "application fee",
     ]
 
-    section_pattern = r"(?im)^\s*(?:%s)\s*$" % "|".join(re.escape(name) for name in section_names)
-    stop_pattern = r"(?im)^\s*(?:%s)\s*$" % "|".join(re.escape(name) for name in all_stops)
+    section_pattern = r"(?im)^\s*(?:%s)\s*$" % "|".join(
+        re.escape(name) for name in section_names
+    )
+    stop_pattern = r"(?im)^\s*(?:%s)\s*$" % "|".join(
+        re.escape(name) for name in all_stops
+    )
 
     matches = list(re.finditer(section_pattern, text))
     if not matches:
@@ -281,6 +285,7 @@ def extract_walkability(text):
         "bike_label": bike_label,
     }
 
+
 def parse_unit_records(unit_text):
     """
     Parse repeated unit blocks like:
@@ -292,15 +297,16 @@ def parse_unit_records(unit_text):
     square feet
     724
     availibilityNow
-
-    or similar formatting variations.
     """
     pattern = re.compile(
-        r"Unit\s*(?P<unit>[A-Za-z]?\d{3,4}[A-Za-z]?)\s*"
-        r"(?:.*?\bprice\b\s*(?P<price>\$[\d,]+(?:\.\d{2})?))\s*"
-        r"(?:.*?\bsquare feet\b\s*(?P<sqft>[\d,]{3,5}))\s*"
-        r"(?:.*?\bavail(?:ability|ibility)\b\s*(?P<availability>Now|Immediately|[A-Z][a-z]{2,8}\s+\d{1,2}))",
-        re.IGNORECASE | re.DOTALL,
+        r"Unit\s*(?P<unit>[A-Za-z]?\d{3,4}[A-Za-z]?)"
+        r"[\s\S]{0,120}?"
+        r"price\s*(?P<price>\$[\d,]+(?:\.\d{2})?)"
+        r"[\s\S]{0,120}?"
+        r"square feet\s*(?P<sqft>[\d,]{3,5})"
+        r"[\s\S]{0,120}?"
+        r"avail(?:ability|ibility)\s*(?P<availability>Now|Immediately|[A-Z][a-z]{2,8}\s+\d{1,2})",
+        re.IGNORECASE,
     )
 
     matches = []
@@ -335,9 +341,8 @@ def parse_unit_records(unit_text):
         )
 
     return matches
-print("UNIT TEXT START")
-print(unit_text[:3000])
-print("UNIT TEXT END")
+
+
 def parse_apartment_listing(raw_text: str) -> dict:
     """
     Parse one pasted apartment listing text block and return:
@@ -389,11 +394,20 @@ def parse_apartment_listing(raw_text: str) -> dict:
 
     unit_lines = extract_available_units_section(lines)
     unit_lines = [
-    line
-    for line in unit_lines
-    if line.lower()
-    not in {"unit", "base price", "sq ft", "availability", "unit details"}
-]
+        line
+        for line in unit_lines
+        if line.lower() not in {
+            "unit",
+            "base price",
+            "total price",
+            "sq ft",
+            "availability",
+            "unit details",
+            "tour floor plan",
+            "floor plan details",
+        }
+        and not re.search(r"show more units?", line, re.IGNORECASE)
+    ]
 
     unit_text = "\n".join(unit_lines)
     unit_records = parse_unit_records(unit_text)
