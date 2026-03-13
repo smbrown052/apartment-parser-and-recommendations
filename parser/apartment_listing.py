@@ -281,23 +281,6 @@ def extract_walkability(text):
         "bike_label": bike_label,
     }
 
-unit_lines = [
-    line
-    for line in unit_lines
-    if line.lower()
-    not in {
-        "unit",
-        "total price",
-        "sq ft",
-        "availability",
-        "unit details",
-        "tour floor plan",
-        "floor plan details",
-    }
-    and not re.search(r"show more units?", line, re.IGNORECASE)
-]
-
-
 def parse_unit_records(unit_text):
     """
     Parse repeated unit blocks like:
@@ -404,10 +387,11 @@ def parse_apartment_listing(raw_text: str) -> dict:
 
     unit_lines = extract_available_units_section(lines)
     unit_lines = [
-        line
-        for line in unit_lines
-        if line.lower() not in {"unit", "base price", "sq ft", "availability", "unit details"}
-    ]
+    line
+    for line in unit_lines
+    if line.lower()
+    not in {"unit", "base price", "sq ft", "availability", "unit details"}
+]
 
     unit_text = "\n".join(unit_lines)
     unit_records = parse_unit_records(unit_text)
